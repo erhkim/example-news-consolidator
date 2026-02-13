@@ -1,0 +1,172 @@
+{
+  "run_id": "20260212_140000",
+  "run_at": "2026-02-12T14:00:00+00:00",
+  "total_articles_fetched": 47,
+  "raw_disruptions_detected": 5,
+  "consolidated_events": 3,
+  "events": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "title": "Typhoon Gaemi forces closure of Kaohsiung and Keelung ports",
+      "summary": "Typhoon Gaemi made landfall in southern Taiwan, forcing the closure of Kaohsiung and Keelung ports. Container operations suspended for at least 48 hours with vessel diversions to Hong Kong and Busan. Multiple carriers including Evergreen and Yang Ming have announced blank sailings for the coming week.",
+      "category": "weather",
+      "severity": "critical",
+      "transport_modes": ["ocean", "air"],
+      "affected_locations": [
+        {
+          "country": "Taiwan",
+          "country_code": "TW",
+          "region": null,
+          "city": "Kaohsiung",
+          "iata_codes": ["KHH"],
+          "unlocode": ["TWKHH"]
+        },
+        {
+          "country": "Taiwan",
+          "country_code": "TW",
+          "region": null,
+          "city": "Keelung",
+          "iata_codes": [],
+          "unlocode": ["TWKEL"]
+        },
+        {
+          "country": "Hong Kong",
+          "country_code": "HK",
+          "region": null,
+          "city": "Hong Kong",
+          "iata_codes": ["HKG"],
+          "unlocode": ["HKHKG"]
+        },
+        {
+          "country": "South Korea",
+          "country_code": "KR",
+          "region": null,
+          "city": "Busan",
+          "iata_codes": ["PUS"],
+          "unlocode": ["KRPUS"]
+        }
+      ],
+      "affected_trade_lanes": [
+        "Asia-US West Coast",
+        "Intra-Asia",
+        "Asia-Europe"
+      ],
+      "estimated_duration": "3-7 days including cascading delays",
+      "keywords": ["typhoon", "port closure", "taiwan", "vessel diversion", "container", "blank sailing", "kaohsiung"],
+      "sources": [
+        {
+          "url": "https://lloydslist.com/typhoon-gaemi-taiwan-ports",
+          "name": "Lloyd's List",
+          "published_at": "2026-02-12T08:30:00Z",
+          "relevance_score": 0.95
+        },
+        {
+          "url": "https://theloadstar.com/typhoon-gaemi-blank-sailings",
+          "name": "The Loadstar",
+          "published_at": "2026-02-12T09:45:00Z",
+          "relevance_score": 0.91
+        },
+        {
+          "url": "https://splash247.com/taiwan-typhoon-port-closure",
+          "name": "Splash247",
+          "published_at": "2026-02-12T10:10:00Z",
+          "relevance_score": 0.87
+        }
+      ],
+      "first_seen": "2026-02-12T08:30:00Z",
+      "last_updated": "2026-02-12T10:10:00Z",
+      "article_count": 3
+    },
+    {
+      "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+      "title": "German rail workers announce 48-hour freight strike",
+      "summary": "GDL union announced a 48-hour strike affecting Deutsche Bahn freight services across Germany. Intermodal connections to Rotterdam and Antwerp expected to see significant delays.",
+      "category": "labor",
+      "severity": "high",
+      "transport_modes": ["rail", "intermodal"],
+      "affected_locations": [
+        {
+          "country": "Germany",
+          "country_code": "DE",
+          "region": null,
+          "city": "Hamburg",
+          "iata_codes": [],
+          "unlocode": ["DEHAM"]
+        },
+        {
+          "country": "Netherlands",
+          "country_code": "NL",
+          "region": null,
+          "city": "Rotterdam",
+          "iata_codes": [],
+          "unlocode": ["NLRTM"]
+        },
+        {
+          "country": "Belgium",
+          "country_code": "BE",
+          "region": null,
+          "city": "Antwerp",
+          "iata_codes": [],
+          "unlocode": ["BEANR"]
+        }
+      ],
+      "affected_trade_lanes": [
+        "Europe inland corridors",
+        "North Europe-Hinterland"
+      ],
+      "estimated_duration": "48 hours",
+      "keywords": ["rail strike", "germany", "GDL", "intermodal", "freight"],
+      "sources": [
+        {
+          "url": "https://joc.com/german-rail-strike-2026",
+          "name": "Journal of Commerce",
+          "published_at": "2026-02-12T10:15:00Z",
+          "relevance_score": 0.88
+        }
+      ],
+      "first_seen": "2026-02-12T10:15:00Z",
+      "last_updated": "2026-02-12T14:00:15Z",
+      "article_count": 1
+    },
+    {
+      "id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+      "title": "Memphis airport fog causes 12-hour air cargo delays",
+      "summary": "Dense fog at Memphis International Airport caused a 12-hour ground stop affecting FedEx hub operations. Air cargo shipments delayed across the US network with ripple effects on next-day delivery commitments.",
+      "category": "weather",
+      "severity": "medium",
+      "transport_modes": ["air"],
+      "affected_locations": [
+        {
+          "country": "United States",
+          "country_code": "US",
+          "region": "Tennessee",
+          "city": "Memphis",
+          "iata_codes": ["MEM"],
+          "unlocode": []
+        }
+      ],
+      "affected_trade_lanes": [
+        "US domestic air freight"
+      ],
+      "estimated_duration": "12-24 hours",
+      "keywords": ["fog", "airport", "memphis", "FedEx", "ground stop", "air cargo"],
+      "sources": [
+        {
+          "url": "https://aircargonews.net/memphis-fog-delays",
+          "name": "Air Cargo News",
+          "published_at": "2026-02-12T06:00:00Z",
+          "relevance_score": 0.82
+        },
+        {
+          "url": "https://freightwaves.com/memphis-fedex-hub-ground-stop",
+          "name": "FreightWaves",
+          "published_at": "2026-02-12T07:30:00Z",
+          "relevance_score": 0.79
+        }
+      ],
+      "first_seen": "2026-02-12T06:00:00Z",
+      "last_updated": "2026-02-12T07:30:00Z",
+      "article_count": 2
+    }
+  ]
+}
