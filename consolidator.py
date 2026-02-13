@@ -18,9 +18,12 @@ from typing import Optional
 import numpy as np
 from openai import AsyncOpenAI
 
+from models import ClusterConfirmation
+
 logger = logging.getLogger(__name__)
 
 MODEL = "gpt-4o"
+EMBEDDING_MODEL = "text-embedding-3-small"  # 1536 dims, ~$0.02 per 1M tokens
 
 # -- Similarity threshold tuning --
 # Too low = separate events get merged (dangerous)
@@ -65,8 +68,8 @@ class EventConsolidator:
         if len(disruptions) == 1:
             return [self._single_to_event(disruptions[0])]
 
-        # Step 1: Build similarity matrix
-        embeddings = self._compute_embeddings(disruptions)
+        # Step 1: Build similarity matrix using OpenAI embeddings
+        embeddings = await self._compute_embeddings(disruptions)
         clusters = self._cluster_by_similarity(disruptions, embeddings)
 
         logger.info(
@@ -95,47 +98,51 @@ class EventConsolidator:
     # Similarity / Clustering
     # -------------------------------------------------------------------------
 
-    def _compute_embeddings(self, disruptions: list[dict]) -> np.ndarray:
+    async def _compute_embeddings(self, disruptions: list[dict]) -> np.ndarray:
         """
-        Compute a lightweight fingerprint vector for each disruption.
+        Compute semantic embeddings for each disruption using OpenAI's
+        text-embedding-3-small model.
 
-        In production, use a real embedding model (e.g. voyage-3, text-embedding-3-small).
-        This implementation uses a fast TF-IDF-like bag-of-words approach as a
-        zero-dependency fallback.
+        We build a fingerprint string from key fields (summary, locations,
+        category, keywords) and embed that. This gives the model enough
+        context to understand what the disruption is about.
+
+        Cost: ~$0.02 per 1M tokens. A batch of 50 disruption summaries
+        is typically under 10K tokens — effectively free.
         """
-        # Build fingerprint from key fields
+        # Build fingerprint text for each disruption
         texts = []
         for d in disruptions:
             fingerprint_parts = [
                 d.get("category", ""),
                 d.get("summary", ""),
-                # Location fingerprint: country codes + city names
                 " ".join(
                     f"{loc.get('country_code', '')} {loc.get('city', '')}"
                     for loc in d.get("affected_locations", [])
                 ),
-                # Transport modes
                 " ".join(d.get("transport_modes", [])),
-                # Keywords
                 " ".join(d.get("keywords", [])),
             ]
-            texts.append(" ".join(fingerprint_parts).lower())
+            texts.append(" ".join(fingerprint_parts))
 
-        # Simple bag-of-words vectors (swap for real embeddings in prod)
-        vocab = {}
-        for text in texts:
-            for word in text.split():
-                if word not in vocab:
-                    vocab[word] = len(vocab)
+        # Single batched API call — all texts at once
+        response = await self.client.embeddings.create(
+            model=EMBEDDING_MODEL,
+            input=texts,
+        )
 
-        vectors = np.zeros((len(texts), len(vocab)))
-        for i, text in enumerate(texts):
-            for word in text.split():
-                vectors[i, vocab[word]] += 1
-            # L2 normalize
-            norm = np.linalg.norm(vectors[i])
-            if norm > 0:
-                vectors[i] /= norm
+        # Response comes back as a list of embedding objects.
+        # Each has an .embedding attribute (list of floats) and an .index
+        # attribute matching the input order.
+        # Sort by index to guarantee order matches our input.
+        sorted_embeddings = sorted(response.data, key=lambda x: x.index)
+        vectors = np.array([e.embedding for e in sorted_embeddings])
+
+        # OpenAI embeddings are already normalized for text-embedding-3-small,
+        # but normalize anyway to be safe for cosine similarity via dot product.
+        norms = np.linalg.norm(vectors, axis=1, keepdims=True)
+        norms[norms == 0] = 1  # avoid division by zero
+        vectors = vectors / norms
 
         return vectors
 
@@ -254,31 +261,21 @@ Confirm whether they are about the SAME event or DIFFERENT events.
 Articles:
 {chr(10).join(summaries)}
 
-Respond with ONLY valid JSON:
-{{
-  "same_event": true/false,
-  "groups": [[0, 1, 2]] or [[0, 1], [2]] if different events,
-  "reason": "<brief explanation>"
-}}
-
 Rules:
 - Same event = same root cause, same general location, same timeframe
 - Different framing or different sources covering the same incident = SAME event
 - Related but distinct events (e.g. two different port closures) = DIFFERENT events"""
 
         try:
-            response = await self.client.responses.create(
+            response = await self.client.responses.parse(
                 model=MODEL,
                 max_output_tokens=300,
                 input=prompt,
+                text_format=ClusterConfirmation,
             )
-            import json
-            raw = response.output_text
-            if raw.startswith("```"):
-                raw = raw.split("\n", 1)[1].rsplit("```", 1)[0]
-            result = json.loads(raw)
+            result = response.output_parsed
 
-            groups = result.get("groups", [list(range(len(cluster)))])
+            groups = result.groups if result.groups else [list(range(len(cluster)))]
             return [[cluster[i] for i in group] for group in groups]
 
         except Exception as e:

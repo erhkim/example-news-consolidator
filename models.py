@@ -7,6 +7,8 @@ from enum import Enum
 from typing import Optional
 from datetime import datetime
 
+from pydantic import BaseModel, Field
+
 
 class DisruptionCategory(str, Enum):
     WEATHER = "weather"
@@ -64,6 +66,43 @@ class DisruptionEvent:
     estimated_duration: Optional[str] = None  # e.g. "2-5 days"
     keywords: list[str] = field(default_factory=list)
     raw_text: str = ""
+
+
+# -- Pydantic models for OpenAI Structured Output --
+
+class RelevanceResult(BaseModel):
+    """Response schema for Stage 1: relevance scoring."""
+    score: float = Field(description="Relevance score from 0.0 to 1.0")
+    reason: str = Field(description="One-sentence explanation of the score")
+
+
+class LocationExtraction(BaseModel):
+    """A single affected location extracted from an article."""
+    country: str = Field(description="Full country name")
+    country_code: str = Field(description="ISO 3166-1 alpha-2 code, e.g. US, CN, DE")
+    region: Optional[str] = Field(default=None, description="State/province/region, or null if unknown")
+    city: Optional[str] = Field(default=None, description="City name, or null if unknown")
+    iata_codes: list[str] = Field(default_factory=list, description="Airport IATA codes if air transport affected, e.g. LAX, PVG")
+    unlocode: list[str] = Field(default_factory=list, description="UN/LOCODE for ports if ocean transport affected, e.g. USLAX, CNSHA")
+
+
+class DisruptionExtraction(BaseModel):
+    """Response schema for Stage 2+3: classification and impact extraction."""
+    summary: str = Field(description="2-3 sentence summary of the disruption")
+    category: DisruptionCategory = Field(description="Type of disruption")
+    severity: SeverityLevel = Field(description="Severity level: critical = full stoppage/major route blocked, high = significant delays, medium = partial impact, low = potential/minor impact")
+    transport_modes: list[TransportMode] = Field(description="Affected transport modes")
+    affected_locations: list[LocationExtraction] = Field(description="Locations affected by the disruption")
+    affected_trade_lanes: list[str] = Field(default_factory=list, description="Affected trade lanes, e.g. Asia-US West Coast, Europe-Middle East")
+    estimated_duration: str = Field(description="Duration estimate, e.g. 2-5 days, ongoing, unknown")
+    keywords: list[str] = Field(default_factory=list, description="Relevant keywords for indexing")
+
+
+class ClusterConfirmation(BaseModel):
+    """Response schema for consolidator LLM cluster confirmation."""
+    same_event: bool = Field(description="Whether all articles describe the same event")
+    groups: list[list[int]] = Field(description="Article index groups, e.g. [[0, 1, 2]] if same event, [[0, 1], [2]] if different")
+    reason: str = Field(description="Brief explanation of the grouping decision")
 
 
 # -- Configuration --

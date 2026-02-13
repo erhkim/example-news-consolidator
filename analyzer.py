@@ -5,22 +5,15 @@ Stage 1: Relevance scoring (is this actually about freight disruption?)
 Stage 2: Classification (what kind of disruption?)
 Stage 3: Impact extraction (where, what transport codes?)
 
-Uses structured output via JSON mode to get reliable extraction.
+Uses Pydantic structured output for reliable, typed extraction.
 """
 
-import json
 import logging
 from typing import Optional
 
 from openai import AsyncOpenAI
 
-from models import (
-    AffectedLocation,
-    DisruptionCategory,
-    DisruptionEvent,
-    SeverityLevel,
-    TransportMode,
-)
+from models import DisruptionExtraction, RelevanceResult
 
 logger = logging.getLogger(__name__)
 
@@ -42,17 +35,18 @@ class DisruptionAnalyzer:
 
         # Stage 1: Relevance check (cheap, fast — use haiku or a classifier)
         relevance = await self._check_relevance(text)
-        if relevance["score"] < 0.6:
-            logger.debug(f"Filtered out (score={relevance['score']}): {article.get('title')}")
+        if relevance.score < 0.6:
+            logger.debug(f"Filtered out (score={relevance.score}): {article.get('title')}")
             return None
 
         # Stage 2+3: Classification and extraction in one call
         # Combining saves latency and cost vs two separate calls
-        result = await self._classify_and_extract(text)
-        if not result:
+        extraction = await self._classify_and_extract(text)
+        if not extraction:
             return None
 
-        result["relevance_score"] = relevance["score"]
+        result = extraction.model_dump()
+        result["relevance_score"] = relevance.score
         result["source_url"] = article.get("url", "")
         result["source_name"] = article.get("source", "")
         result["title"] = article.get("title", "")
@@ -60,7 +54,7 @@ class DisruptionAnalyzer:
 
         return result
 
-    async def _check_relevance(self, text: str) -> dict:
+    async def _check_relevance(self, text: str) -> RelevanceResult:
         """
         Stage 1: Quick relevance scoring.
         Could also be a fine-tuned classifier for cost savings at scale.
@@ -74,23 +68,21 @@ NOT relevant = general business news, stock market, tech news, politics without
 direct transport/trade impact, local crime, sports, entertainment.
 
 Article:
-{text[:3000]}
-
-Respond with ONLY valid JSON:
-{{"score": <float>, "reason": "<one sentence>"}}"""
+{text[:3000]}"""
 
         try:
-            response = await self.client.responses.create(
+            response = await self.client.responses.parse(
                 model=MODEL,
                 max_output_tokens=150,
                 input=prompt,
+                text_format=RelevanceResult,
             )
-            return json.loads(response.output_text)
+            return response.output_parsed
         except Exception as e:
             logger.error(f"Relevance check failed: {e}")
-            return {"score": 0.0, "reason": "error"}
+            return RelevanceResult(score=0.0, reason="error")
 
-    async def _classify_and_extract(self, text: str) -> Optional[dict]:
+    async def _classify_and_extract(self, text: str) -> Optional[DisruptionExtraction]:
         """
         Stage 2+3 combined: Classify disruption type and extract impact details.
         Single LLM call for efficiency.
@@ -100,53 +92,20 @@ Respond with ONLY valid JSON:
 Article:
 {text[:4000]}
 
-Respond with ONLY valid JSON matching this schema exactly:
-
-{{
-  "summary": "<2-3 sentence summary of the disruption>",
-  "category": "<one of: weather, geopolitical, labor, infrastructure, regulatory, accident, pandemic_health, cyber, congestion, other>",
-  "severity": "<one of: low, medium, high, critical>",
-  "transport_modes": ["<affected modes: air, ocean, rail, road, intermodal>"],
-  "affected_locations": [
-    {{
-      "country": "<full country name>",
-      "country_code": "<ISO 3166-1 alpha-2, e.g. US, CN, DE>",
-      "region": "<state/province/region or null>",
-      "city": "<city name or null>",
-      "iata_codes": ["<airport IATA codes if air transport affected, e.g. LAX, PVG>"],
-      "unlocode": ["<UN/LOCODE for ports if ocean transport affected, e.g. USLAX, CNSHA>"]
-    }}
-  ],
-  "affected_trade_lanes": ["<e.g. Asia-US West Coast, Europe-Middle East>"],
-  "estimated_duration": "<e.g. 2-5 days, ongoing, unknown>",
-  "keywords": ["<relevant keywords for indexing>"]
-}}
-
 Rules:
 - Only include locations explicitly mentioned or strongly implied by the article.
 - Use correct IATA codes (3-letter airport codes) and UN/LOCODEs (5-char port codes).
 - If an article mentions a port city, include both the city and its port UNLOCODE.
-- If uncertain about a code, omit it rather than guess.
-- severity: critical = full stoppage/major route blocked, high = significant delays,
-  medium = partial impact, low = potential/minor impact.
-"""
+- If uncertain about a code, omit it rather than guess."""
 
         try:
-            response = await self.client.responses.create(
+            response = await self.client.responses.parse(
                 model=MODEL,
                 max_output_tokens=1500,
                 input=prompt,
+                text_format=DisruptionExtraction,
             )
-            raw = response.output_text
-
-            # Handle potential markdown wrapping
-            if raw.startswith("```"):
-                raw = raw.split("\n", 1)[1].rsplit("```", 1)[0]
-
-            return json.loads(raw)
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse LLM JSON: {e}\nRaw: {raw[:500]}")
-            return None
+            return response.output_parsed
         except Exception as e:
             logger.error(f"Classification/extraction failed: {e}")
             return None
