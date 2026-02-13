@@ -58,9 +58,9 @@ Structured JSON Output
 ## Setup
 
 ```bash
-pip install httpx anthropic
+pip install httpx openai
 
-export ANTHROPIC_API_KEY="sk-..."
+export OPENAI_API_KEY="sk-..."
 export NEWSAPI_KEY="..."          # optional
 export RUN_ONCE=1                  # single run, or omit for hourly loop
 
@@ -88,4 +88,4 @@ See `example_output.json` for full example. Each disruption contains:
 
 **Add a disruption category**: Update `DisruptionCategory` enum in `models.py` and the classification prompt in `analyzer.py`.
 
-**Change LLM provider**: Swap the Anthropic client in `analyzer.py` for OpenAI, a local model, etc. The prompt structure stays the same.
+**Change LLM provider**: Swap the OpenAI client in `analyzer.py` for another provider, a local model, etc. The prompt structure stays the same.

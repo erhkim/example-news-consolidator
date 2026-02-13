@@ -34,7 +34,7 @@ logger = logging.getLogger("disruption_pipeline")
 
 # -- Config from env --
 NEWSAPI_KEY = os.getenv("NEWSAPI_KEY")  # optional, GDELT works without keys
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OUTPUT_DIR = Path(os.getenv("OUTPUT_DIR", "./output"))
 RUN_INTERVAL_SECONDS = int(os.getenv("RUN_INTERVAL_SECONDS", "3600"))  # 1 hour
 MAX_CONCURRENT_ANALYSES = int(os.getenv("MAX_CONCURRENT", "5"))
@@ -55,7 +55,7 @@ async def run_pipeline() -> list[dict]:
         return []
 
     # 2. Analyze with LLM (with concurrency limit)
-    analyzer = DisruptionAnalyzer(anthropic_api_key=ANTHROPIC_API_KEY)
+    analyzer = DisruptionAnalyzer(openai_api_key=OPENAI_API_KEY)
     validator = CodeValidator()
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_ANALYSES)
 
@@ -82,7 +82,7 @@ async def run_pipeline() -> list[dict]:
     logger.info(f"Detected {len(disruptions)} disruptions from {len(articles)} articles")
 
     # 3. Consolidate duplicate events
-    consolidator = EventConsolidator(anthropic_api_key=ANTHROPIC_API_KEY)
+    consolidator = EventConsolidator(openai_api_key=OPENAI_API_KEY)
     events = await consolidator.consolidate(disruptions)
     logger.info(
         f"Consolidated {len(disruptions)} disruptions into {len(events)} unique events"

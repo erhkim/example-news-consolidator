@@ -12,7 +12,7 @@ import json
 import logging
 from typing import Optional
 
-from anthropic import AsyncAnthropic
+from openai import AsyncOpenAI
 
 from models import (
     AffectedLocation,
@@ -24,16 +24,14 @@ from models import (
 
 logger = logging.getLogger(__name__)
 
-# You can swap this for OpenAI, local models, etc.
-# Using Claude because structured extraction is a strength.
-MODEL = "claude-sonnet-4-5-20250929"
+MODEL = "gpt-4o"
 
 
 class DisruptionAnalyzer:
     """Three-stage LLM pipeline for disruption detection and extraction."""
 
-    def __init__(self, anthropic_api_key: str):
-        self.client = AsyncAnthropic(api_key=anthropic_api_key)
+    def __init__(self, openai_api_key: str):
+        self.client = AsyncOpenAI(api_key=openai_api_key)
 
     async def analyze_article(self, article: dict) -> Optional[dict]:
         """
@@ -82,12 +80,12 @@ Respond with ONLY valid JSON:
 {{"score": <float>, "reason": "<one sentence>"}}"""
 
         try:
-            response = await self.client.messages.create(
+            response = await self.client.responses.create(
                 model=MODEL,
-                max_tokens=150,
-                messages=[{"role": "user", "content": prompt}],
+                max_output_tokens=150,
+                input=prompt,
             )
-            return json.loads(response.content[0].text)
+            return json.loads(response.output_text)
         except Exception as e:
             logger.error(f"Relevance check failed: {e}")
             return {"score": 0.0, "reason": "error"}
@@ -134,12 +132,12 @@ Rules:
 """
 
         try:
-            response = await self.client.messages.create(
+            response = await self.client.responses.create(
                 model=MODEL,
-                max_tokens=1500,
-                messages=[{"role": "user", "content": prompt}],
+                max_output_tokens=1500,
+                input=prompt,
             )
-            raw = response.content[0].text
+            raw = response.output_text
 
             # Handle potential markdown wrapping
             if raw.startswith("```"):

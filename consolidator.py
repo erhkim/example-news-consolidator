@@ -16,11 +16,11 @@ from datetime import datetime
 from typing import Optional
 
 import numpy as np
-from anthropic import AsyncAnthropic
+from openai import AsyncOpenAI
 
 logger = logging.getLogger(__name__)
 
-MODEL = "claude-sonnet-4-5-20250929"
+MODEL = "gpt-4o"
 
 # -- Similarity threshold tuning --
 # Too low = separate events get merged (dangerous)
@@ -50,8 +50,8 @@ class ConsolidatedEvent:
 class EventConsolidator:
     """Clusters and merges disruption results into deduplicated events."""
 
-    def __init__(self, anthropic_api_key: str, use_llm_confirmation: bool = True):
-        self.client = AsyncAnthropic(api_key=anthropic_api_key)
+    def __init__(self, openai_api_key: str, use_llm_confirmation: bool = True):
+        self.client = AsyncOpenAI(api_key=openai_api_key)
         self.use_llm_confirmation = use_llm_confirmation
 
     async def consolidate(self, disruptions: list[dict]) -> list[ConsolidatedEvent]:
@@ -267,13 +267,13 @@ Rules:
 - Related but distinct events (e.g. two different port closures) = DIFFERENT events"""
 
         try:
-            response = await self.client.messages.create(
+            response = await self.client.responses.create(
                 model=MODEL,
-                max_tokens=300,
-                messages=[{"role": "user", "content": prompt}],
+                max_output_tokens=300,
+                input=prompt,
             )
             import json
-            raw = response.content[0].text
+            raw = response.output_text
             if raw.startswith("```"):
                 raw = raw.split("\n", 1)[1].rsplit("```", 1)[0]
             result = json.loads(raw)
